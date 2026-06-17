@@ -1,0 +1,23 @@
+const CACHE = 'dronewx-v1';
+const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+  );
+});
+
+self.addEventListener('fetch', e => {
+  // Only cache app shell; let API calls (weather/geocoding) always hit network
+  const url = e.request.url;
+  if (url.includes('open-meteo.com') || url.includes('nominatim.openstreetmap.org')) {
+    return;
+  }
+  e.respondWith(
+    caches.match(e.request).then(cached => cached || fetch(e.request))
+  );
+});

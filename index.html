@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DroneWX">
+<meta name="theme-color" content="#0a0f1e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>DroneWX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: rgba(255,255,255,0.07);
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --warn: #f59e0b;
+    --danger: #f87171;
+    --good: #34d399;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { height: 100%; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100%;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    overflow-x: hidden;
+  }
+
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image: linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+  }
+
+  .app { position: relative; z-index: 1; padding: 0 0 2rem; max-width: 430px; margin: 0 auto; }
+
+  /* HEADER */
+  .header {
+    padding: 1.25rem 1.25rem 1rem;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10,15,30,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text { font-family: var(--mono); font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent); }
+
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--muted);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: 20px;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .dot.live { background: var(--good); box-shadow: 0 0 6px var(--good); animation: pulse-dot 2s infinite; }
+  .dot.err { background: var(--danger); }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .refresh-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--muted); font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .refresh-btn:active { transform: scale(0.92); background: var(--surface2); }
+  .refresh-btn.spinning { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* LOCATION */
+  .location-bar {
+    margin: 1rem 1.25rem 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 0.875rem 1rem;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .loc-icon { font-size: 22px; color: var(--accent); flex-shrink: 0; }
+  .loc-info { flex: 1; min-width: 0; }
+  .loc-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .loc-coords { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* FLY STATUS */
+  .fly-banner {
+    margin: 1rem 1.25rem 0;
+    border-radius: 14px;
+    padding: 1rem 1.125rem;
+    border: 1px solid;
+    display: flex; gap: 12px; align-items: flex-start;
+    animation: fadeIn 0.4s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+  .fly-banner.good { background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.25); }
+  .fly-banner.moderate { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.25); }
+  .fly-banner.bad { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.25); }
+  .fly-emoji { font-size: 28px; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+  .fly-text {}
+  .fly-title { font-size: 15px; font-weight: 600; }
+  .fly-banner.good .fly-title { color: var(--good); }
+  .fly-banner.moderate .fly-title { color: var(--warn); }
+  .fly-banner.bad .fly-title { color: var(--danger); }
+  .fly-desc { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+
+  /* METRICS */
+  .section-label {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
+    margin: 1.25rem 1.25rem 0.625rem;
+  }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 1.25rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem;
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card::before {
+    content: ''; position: absolute; inset: 0; border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.02), transparent);
+    pointer-events: none;
+  }
+  .card-icon { font-size: 22px; margin-bottom: 8px; }
+  .card-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .card-value { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; }
+  .card-unit { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 2px; }
+  .card-sub { font-size: 12px; color: var(--muted); margin-top: 5px; display: flex; align-items: center; gap: 4px; }
+
+  .card.accent-good { border-color: rgba(52,211,153,0.25); }
+  .card.accent-warn { border-color: rgba(245,158,11,0.25); }
+  .card.accent-bad { border-color: rgba(248,113,113,0.25); }
+
+  /* WIND COMPASS */
+  .compass-wrap { display: flex; align-items: center; justify-content: center; margin-top: 6px; }
+  .compass {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 1.5px solid var(--border);
+    position: relative; display: flex; align-items: center; justify-content: center;
+  }
+  .compass-arrow {
+    width: 3px; height: 22px; background: linear-gradient(to bottom, var(--accent), transparent);
+    border-radius: 2px;
+    transform-origin: bottom center;
+    position: absolute; bottom: 50%;
+    transition: transform 0.8s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .compass-n { position: absolute; top: 3px; font-size: 8px; font-family: var(--mono); color: var(--muted); }
+
+  /* SKELETON */
+  .skel { background: var(--surface2); border-radius: 4px; animation: shimmer 1.2s infinite; }
+  .skel-text { height: 14px; width: 60%; }
+  .skel-val { height: 24px; width: 50%; margin-top: 4px; }
+  @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+  /* ERROR */
+  .error-box {
+    margin: 1rem 1.25rem 0;
+    background: rgba(248,113,113,0.08);
+    border: 1px solid rgba(248,113,113,0.25);
+    border-radius: 14px; padding: 1rem;
+    font-size: 13px; color: var(--danger); line-height: 1.5;
+  }
+  .error-box strong { display: block; margin-bottom: 4px; }
+
+  /* UPDATED */
+  .footer { text-align: center; font-size: 11px; color: var(--muted); font-family: var(--mono); padding: 1.25rem 1.25rem 0; }
+
+  /* INSTALL BANNER */
+  .install-hint {
+    margin: 1rem 1.25rem 0;
+    background: var(--surface2);
+    border: 1px dashed rgba(56,189,248,0.3);
+    border-radius: 14px; padding: 0.875rem 1rem;
+    font-size: 12px; color: var(--muted); line-height: 1.6;
+    display: none;
+  }
+  .install-hint strong { color: var(--accent); display: block; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="app">
+
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">🚁</div>
+      <div class="logo-text">Drone<span>WX</span></div>
+    </div>
+    <div class="header-right">
+      <div class="status-pill">
+        <div class="dot" id="statusDot"></div>
+        <span id="statusText">GPS...</span>
+      </div>
+      <button class="refresh-btn" id="refreshBtn" onclick="init()" aria-label="Odśwież">↻</button>
+    </div>
+  </header>
+
+  <div class="location-bar" id="locationBar">
+    <div class="loc-icon">📍</div>
+    <div class="loc-info">
+      <div class="loc-name" id="locName">Pobieranie lokalizacji...</div>
+      <div class="loc-coords" id="locCoords">— / —</div>
+    </div>
+  </div>
+
+  <div id="errorBox" style="display:none"></div>
+
+  <div id="flyBanner" style="display:none"></div>
+
+  <div class="section-label">Warunki atmosferyczne</div>
+
+  <div class="grid">
+    <div class="card" id="cardTemp">
+      <div class="card-icon">🌡️</div>
+      <div class="card-label">Temperatura</div>
+      <div class="card-value skel skel-val" id="valTemp"></div>
+      <div class="card-sub skel skel-text" id="subTemp"></div>
+    </div>
+    <div class="card" id="cardWind">
+      <div class="card-icon">💨</div>
+      <div class="card-label">Wiatr</div>
+      <div class="card-value skel skel-val" id="valWind"></div>
+      <div class="compass-wrap">
+        <div class="compass" id="compass">
+          <span class="compass-n">N</span>
+          <div class="compass-arrow" id="compassArrow"></div>
+        </div>
+        <div class="card-sub" id="subWind" style="margin-left:8px;margin-top:0"></div>
+      </div>
+    </div>
+    <div class="card" id="cardCloud">
+      <div class="card-icon">☁️</div>
+      <div class="card-label">Zachmurzenie</div>
+      <div class="card-value skel skel-val" id="valCloud"></div>
+      <div class="card-sub skel skel-text" id="subCloud"></div>
+    </div>
+    <div class="card" id="cardHumid">
+      <div class="card-icon">💧</div>
+      <div class="card-label">Wilgotność</div>
+      <div class="card-value skel skel-val" id="valHumid"></div>
+      <div class="card-sub skel skel-text" id="subHumid"></div>
+    </div>
+    <div class="card" id="cardVis">
+      <div class="card-icon">👁️</div>
+      <div class="card-label">Widzialność</div>
+      <div class="card-value skel skel-val" id="valVis"></div>
+      <div class="card-sub skel skel-text" id="subVis"></div>
+    </div>
+    <div class="card" id="cardPres">
+      <div class="card-icon">🔵</div>
+      <div class="card-label">Ciśnienie</div>
+      <div class="card-value skel skel-val" id="valPres"></div>
+      <div class="card-sub skel skel-text" id="subPres"></div>
+    </div>
+  </div>
+
+  <div class="install-hint" id="installHint">
+    <strong>📲 Zainstaluj na iPhone</strong>
+    Kliknij <b>Udostępnij</b> (kwadrat ze strzałką) → <b>Dodaj do ekranu głównego</b> → <b>Dodaj</b>
+  </div>
+
+  <div class="footer" id="footer"></div>
+</div>
+
+<script>
+let lat = null, lon = null;
+
+const wmo = {0:'Bezchmurnie',1:'Głównie pogodnie',2:'Częściowo pochmurno',3:'Pochmurno',
+  45:'Mgła',48:'Mgła szronowa',51:'Lekka mżawka',53:'Mżawka',55:'Gęsta mżawka',
+  61:'Lekki deszcz',63:'Deszcz',65:'Silny deszcz',71:'Lekki śnieg',73:'Śnieg',75:'Silny śnieg',
+  80:'Przelotny deszcz',81:'Umiarkowany przelotny',82:'Silny przelotny',95:'Burza',96:'Burza z gradem',99:'Silna burza'};
+
+const dirs=['N','NE','E','SE','S','SW','W','NW'];
+function deg2dir(d){return dirs[Math.round(d/45)%8];}
+
+function set(id, html, removeSkel=true) {
+  const el = document.getElementById(id);
+  if(removeSkel) { el.classList.remove('skel','skel-val','skel-text'); }
+  el.innerHTML = html;
+}
+
+function flyEval(wind, cloud, vis) {
+  if (wind > 12 || vis < 1000) return 'bad';
+  if (wind > 7 || cloud > 75 || vis < 4000) return 'moderate';
+  return 'good';
+}
+
+function showFly(score, wind, cloud, vis) {
+  const el = document.getElementById('flyBanner');
+  el.style.display = 'flex';
+  const cfg = {
+    good: { emoji:'✅', title:'Warunki idealne do lotu', desc:'Wiatr, widoczność i zachmurzenie są w normie. Możesz bezpiecznie pilotować drona.' },
+    moderate: { emoji:'⚠️', title:'Warunki umiarkowane', desc: wind>7 ? `Wiatr ${wind.toFixed(1)} m/s zbliża się do limitu (8–10 m/s). Leć ostrożnie.` : cloud>75 ? 'Duże zachmurzenie — utrzymaj kontakt wzrokowy z dronem.' : 'Ograniczona widoczność — trzymaj drona blisko siebie.' },
+    bad: { emoji:'🚫', title:'Lot niezalecany', desc: wind>12 ? `Wiatr ${wind.toFixed(1)} m/s przekracza bezpieczny limit. Ryzyko utraty kontroli.` : 'Widoczność poniżej 1 km. Warunki niebezpieczne dla lotu VFR.' }
+  };
+  const c = cfg[score];
+  el.className = `fly-banner ${score}`;
+  el.innerHTML = `<div class="fly-emoji">${c.emoji}</div><div class="fly-text"><div class="fly-title">${c.title}</div><div class="fly-desc">${c.desc}</div></div>`;
+}
+
+function cardClass(score) {
+  return score==='good'?'accent-good':score==='moderate'?'accent-warn':'accent-bad';
+}
+
+async function init() {
+  const btn = document.getElementById('refreshBtn');
+  const dot = document.getElementById('statusDot');
+  btn.classList.add('spinning');
+  dot.className='dot';
+  document.getElementById('statusText').textContent='GPS...';
+  document.getElementById('errorBox').style.display='none';
+  document.getElementById('flyBanner').style.display='none';
+
+  if (!navigator.geolocation) { showErr('Przeglądarka nie obsługuje GPS.'); btn.classList.remove('spinning'); return; }
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+    set('locCoords',`${lat.toFixed(5)}° N &nbsp;${lon.toFixed(5)}° E`,false);
+    document.getElementById('statusText').textContent='Pobieranie...';
+    try {
+      const [wx, name] = await Promise.all([fetchWx(), fetchName()]);
+      render(wx, name);
+      dot.className='dot live';
+      document.getElementById('statusText').textContent='Na żywo';
+    } catch(e) { showErr('Błąd pobierania danych pogodowych. Sprawdź internet.'); }
+    btn.classList.remove('spinning');
+  }, err => {
+    const msgs={1:'Brak dostępu do GPS. Zezwól aplikacji na lokalizację w Ustawieniach iPhone → Prywatność → Usługi lokalizacji.',2:'Nie można ustalić lokalizacji GPS.',3:'Upłynął czas oczekiwania na GPS.'};
+    showErr(msgs[err.code]||'Błąd GPS.');
+    dot.className='dot err';
+    document.getElementById('statusText').textContent='Błąd';
+    btn.classList.remove('spinning');
+  }, {timeout:15000,enableHighAccuracy:true,maximumAge:30000});
+}
+
+async function fetchWx() {
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,visibility&wind_speed_unit=ms&timezone=auto`);
+  if(!r.ok) throw new Error();
+  return r.json();
+}
+
+async function fetchName() {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=pl`);
+    const d = await r.json();
+    const a = d.address;
+    return a.city||a.town||a.village||a.county||a.state||'Nieznana lokalizacja';
+  } catch { return 'Twoja lokalizacja'; }
+}
+
+function render(wx, name) {
+  const c = wx.current;
+  const wind = c.wind_speed_10m;
+  const gusts = c.wind_gusts_10m;
+  const cloud = c.cloud_cover;
+  const vis = c.visibility;
+  const desc = wmo[c.weather_code]||'—';
+  const dir = c.wind_direction_10m;
+  const score = flyEval(wind, cloud, vis);
+
+  set('locName', name, false);
+
+  // temp
+  const tempScore = c.temperature_2m < 0 ? 'bad' : c.temperature_2m < 5 ? 'moderate' : 'good';
+  document.getElementById('cardTemp').className = `card ${cardClass(tempScore)}`;
+  set('valTemp', `${Math.round(c.temperature_2m)}<span class="card-unit">°C</span>`);
+  set('subTemp', `Odczuwalna ${Math.round(c.apparent_temperature)}°C`);
+
+  // wind
+  document.getElementById('cardWind').className = `card ${cardClass(wind>12?'bad':wind>7?'moderate':'good')}`;
+  set('valWind', `${wind.toFixed(1)}<span class="card-unit">m/s</span>`);
+  set('subWind', `${deg2dir(dir)} · porywy ${gusts?gusts.toFixed(1):'—'} m/s`, false);
+  document.getElementById('compassArrow').style.transform = `rotate(${dir}deg)`;
+
+  // cloud
+  document.getElementById('cardCloud').className = `card ${cardClass(cloud>75?'bad':cloud>40?'moderate':'good')}`;
+  set('valCloud', `${Math.round(cloud)}<span class="card-unit">%</span>`);
+  set('subCloud', desc);
+
+  // humidity
+  const humidScore = c.relative_humidity_2m > 90 ? 'bad' : c.relative_humidity_2m > 70 ? 'moderate' : 'good';
+  document.getElementById('cardHumid').className = `card ${cardClass(humidScore)}`;
+  set('valHumid', `${Math.round(c.relative_humidity_2m)}<span class="card-unit">%</span>`);
+  const dp = (c.temperature_2m - (100-c.relative_humidity_2m)/5).toFixed(1);
+  set('subHumid', `Punkt rosy ${dp}°C`);
+
+  // visibility
+  document.getElementById('cardVis').className = `card ${cardClass(vis<1000?'bad':vis<4000?'moderate':'good')}`;
+  set('valVis', vis>=1000 ? `${(vis/1000).toFixed(1)}<span class="card-unit">km</span>` : `${Math.round(vis)}<span class="card-unit">m</span>`);
+  set('subVis', vis>=5000?'Dobra widzialność':vis>=1000?'Ograniczona':'⚠️ Bardzo słaba');
+
+  // pressure
+  document.getElementById('cardPres').className = 'card';
+  set('valPres', `${Math.round(c.surface_pressure)}<span class="card-unit">hPa</span>`);
+  set('subPres', c.surface_pressure > 1013 ? '↑ Wyż' : c.surface_pressure < 1000 ? '↓ Niż' : '~ Stabilne');
+
+  showFly(score, wind, cloud, vis);
+
+  const now = new Date();
+  document.getElementById('footer').textContent = `Ostatnia aktualizacja: ${now.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+
+  // show install hint if not standalone
+  if (!window.navigator.standalone) {
+    document.getElementById('installHint').style.display='block';
+  }
+}
+
+function showErr(msg) {
+  const box = document.getElementById('errorBox');
+  box.innerHTML = `<strong>⚠️ Błąd</strong>${msg}`;
+  box.style.display='block';
+  document.getElementById('statusText').textContent='Błąd';
+  document.getElementById('statusDot').className='dot err';
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+init();
+</script>
+</body>
+</html>
