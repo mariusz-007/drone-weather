@@ -1,7 +1,7 @@
 {
   "name": "DroneWX — Pogoda dla Dronów",
   "short_name": "DroneWX",
-  "description": "Aktualne warunki pogodowe dla pilotów dronów",
+  "description": "Aktualne warunki pogodowe dla pilotów dronów — stworzone przez Mariusza Dziekońskiego",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
