@@ -1,30 +1,9 @@
-const CACHE = 'weatherwx-v1';
-const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
-
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', e => {
-  const url = e.request.url;
-  // API calls always from network
-  if (url.includes('open-meteo.com') ||
-      url.includes('nominatim.openstreetmap.org') ||
-      url.includes('swpc.noaa.gov') ||
-      url.includes('fonts.googleapis.com')) {
-    return;
-  }
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
-  );
+const CACHE='weatherwx-v2';
+const ASSETS=['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));self.skipWaiting()});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
+self.addEventListener('fetch',e=>{
+  const u=e.request.url;
+  if(u.includes('open-meteo.com')||u.includes('nominatim')||u.includes('fonts.googleapis'))return;
+  e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));
 });
