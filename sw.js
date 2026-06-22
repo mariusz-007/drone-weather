@@ -1,20 +1,27 @@
-const CACHE = 'dronewx-v1';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'weatherwx-v1';
+const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    )
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
-  // Only cache app shell; let API calls (weather/geocoding) always hit network
   const url = e.request.url;
-  if (url.includes('open-meteo.com') || url.includes('nominatim.openstreetmap.org')) {
+  // API calls always from network
+  if (url.includes('open-meteo.com') ||
+      url.includes('nominatim.openstreetmap.org') ||
+      url.includes('swpc.noaa.gov') ||
+      url.includes('fonts.googleapis.com')) {
     return;
   }
   e.respondWith(
